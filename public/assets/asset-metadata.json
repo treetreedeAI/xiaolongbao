@@ -1,0 +1,233 @@
+{
+  "bun.png": {
+    "width": 268,
+    "height": 228,
+    "source": "board",
+    "crop": [
+      47,
+      594,
+      260,
+      233
+    ],
+    "transparent": true
+  },
+  "dough.png": {
+    "width": 224,
+    "height": 184,
+    "source": "board",
+    "crop": [
+      1088,
+      203,
+      228,
+      187
+    ],
+    "transparent": true
+  },
+  "flour-cup.png": {
+    "width": 170,
+    "height": 156,
+    "source": "flour",
+    "crop": [
+      48,
+      56,
+      102,
+      84
+    ],
+    "transparent": true,
+    "notes": "No-face cup lower half, topped with the finer flour mound from the initial reference."
+  },
+  "bowl.png": {
+    "width": 270,
+    "height": 164,
+    "source": "board",
+    "crop": [
+      422,
+      273,
+      270,
+      164
+    ],
+    "transparent": true
+  },
+  "jug.png": {
+    "width": 182,
+    "height": 158,
+    "source": "water",
+    "crop": [
+      48,
+      42,
+      104,
+      77
+    ],
+    "transparent": true
+  },
+  "filling.png": {
+    "width": 124,
+    "height": 106,
+    "source": "filling",
+    "crop": [
+      77,
+      21,
+      129,
+      110
+    ],
+    "transparent": true
+  },
+  "spoon.png": {
+    "width": 198,
+    "height": 132,
+    "source": "board",
+    "crop": [
+      1486,
+      117,
+      204,
+      142
+    ],
+    "transparent": true,
+    "notes": "Original wooden spoon plus supplied no-face filling crop."
+  },
+  "empty-spoon.png": {
+    "width": 198,
+    "height": 132,
+    "source": "board",
+    "transparent": true,
+    "notes": "Same spoon; occluded interior approximated by an existing wooden-fabric crop, no new illustration."
+  },
+  "wrapper.png": {
+    "width": 276,
+    "height": 164,
+    "source": "board",
+    "crop": [
+      1416,
+      274,
+      276,
+      164
+    ],
+    "transparent": true
+  },
+  "basket-front.png": {
+    "width": 258,
+    "height": 242,
+    "source": "board",
+    "crop": [
+      387,
+      616,
+      258,
+      242
+    ],
+    "transparent": true
+  },
+  "lid.png": {
+    "width": 180,
+    "height": 170,
+    "source": "board",
+    "crop": [
+      751,
+      574,
+      229,
+      90
+    ],
+    "transparent": true,
+    "notes": "Complete oval lid and handle from step 7 of the same board; step 6 only shows an occluded partial lid."
+  },
+  "steamer-closed.png": {
+    "width": 302,
+    "height": 290,
+    "source": "board",
+    "crop": [
+      708,
+      566,
+      310,
+      299
+    ],
+    "transparent": true
+  },
+  "finished.png": {
+    "width": 322,
+    "height": 308,
+    "source": "board",
+    "crop": [
+      1396,
+      564,
+      302,
+      308
+    ],
+    "transparent": true
+  },
+  "finished-bun.png": {
+    "width": 322,
+    "height": 308,
+    "source": "board",
+    "crop": [
+      1396,
+      564,
+      302,
+      308
+    ],
+    "transparent": true,
+    "notes": "Aligned on the same 322x308 canvas as finished.png; extracted from the same source pixels."
+  },
+  "finished-base.png": {
+    "width": 322,
+    "height": 308,
+    "source": "board",
+    "crop": [
+      1396,
+      564,
+      302,
+      308
+    ],
+    "transparent": true,
+    "notes": "Aligned on the same 322x308 canvas as finished.png; extracted from the same source pixels."
+  },
+  "cover-basket.png": {
+    "width": 322,
+    "height": 308,
+    "source": "board",
+    "crop": [
+      1396,
+      564,
+      302,
+      308
+    ],
+    "transparent": true,
+    "notes": "Aligned on the same 322x308 canvas as finished.png; extracted from the same source pixels."
+  },
+  "timer-frame.png": {
+    "width": 270,
+    "height": 270,
+    "source": "board",
+    "crop": [
+      1068,
+      596,
+      270,
+      270
+    ],
+    "transparent": true,
+    "notes": "Complete cream frame repaired with mirrored fur from this same clock; transparent centre for HTML number and ring."
+  },
+  "water-drop.png": {
+    "width": 32,
+    "height": 40,
+    "source": "board",
+    "crop": [
+      830,
+      196,
+      29,
+      38
+    ],
+    "transparent": true
+  },
+  "steam-puff.png": {
+    "width": 96,
+    "height": 88,
+    "source": "board",
+    "crop": [
+      738,
+      548,
+      72,
+      66
+    ],
+    "transparent": true,
+    "notes": "One original white steam cluster, with a feathered alpha silhouette."
+  }
+}
