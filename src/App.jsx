@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useBunGame } from './useBunGame.js';
 import { usePWA } from './usePWA.js';
+import { useGameAudio } from './audio/useGameAudio.js';
 import Stage, { spriteNames } from './Stage.jsx';
 
 const copy = [
@@ -40,6 +41,7 @@ function OfflineStatus({ pwa }) {
 
 export default function App() {
   const game = useBunGame();
+  useGameAudio(game);
   // Updating never resets an in-progress game or dismisses an open dialog.
   const pwa = usePWA({ canReload: game.step === 0 && !game.paused });
   const [dialogType, setDialogType] = useState(null);
