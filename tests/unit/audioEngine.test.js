@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 import { createAudioEngine } from '../../src/audio/audioEngine.js';
 
 const SOUND_NAMES = ['music', 'steam', 'click', 'flour', 'water', 'knead', 'place',
-  'fold', 'tick', 'tickFinal', 'celebrate'];
+  'fold', 'ignition', 'tick', 'tickFinal', 'celebrate'];
 const snapshot = (changes = {}) => ({ step: 0, phase: 'idle', count: 0,
   countdown: 5, progress: 0, paused: false, ...changes });
 const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
@@ -187,6 +187,124 @@ test('countdown plays exactly five cues, with one final cue and no cue on the re
   f.engine.update(snapshot());
   f.engine.update(snapshot({ step: 9, phase: 'done' }));
   assert.equal(f.context.named('celebrate').length, 2, 'a later completed game may celebrate again');
+  f.engine.destroy();
+});
+
+test('ignition plays once at the flame fade boundary, never on entry or subsequent frames', async () => {
+  const f = fixture();
+  await f.engine.unlock();
+  for (const phase of ['entering', 'idle']) {
+    f.engine.update(snapshot({ step: 7, phase, progress: .9 }));
+  }
+  for (const progress of [0, .04, .079, .07999]) {
+    f.engine.update(snapshot({ step: 7, phase: 'action', progress }));
+  }
+  assert.equal(f.context.named('ignition').length, 0);
+  f.engine.update(snapshot({ step: 7, phase: 'action', progress: .08 }));
+  const ignition = f.context.named('ignition')[0];
+  assert.ok(ignition);
+  assert.equal(ignition.loop, false);
+  assert.equal(ignition.starts.length, 1);
+  assert.equal(f.context.named('steam').length, 0, 'ignition must not bring steam forward');
+  for (let frame = 8; frame <= 100; frame += 1) {
+    f.engine.update(snapshot({ step: 7, phase: 'action', progress: frame / 100 }));
+  }
+  // Completing an action increments count; it is not a second ignition cue.
+  for (const phase of ['settling', 'ready', 'ready']) {
+    f.engine.update(snapshot({ step: 7, phase, count: 1, progress: 1 }));
+  }
+  assert.equal(f.context.named('ignition').length, 1);
+  assert.equal(f.context.named('music').length, 1);
+  assert.equal(f.context.named('steam').length, 1);
+  f.engine.destroy();
+});
+
+for (const phase of ['settling', 'ready']) {
+  test(`a late reduced-motion frame reaching ${phase} still ignites exactly once`, async () => {
+    const f = fixture();
+    await f.engine.unlock();
+    f.engine.update(snapshot({ step: 7, phase: 'idle' }));
+    f.engine.update(snapshot({ step: 7, phase: 'action', progress: 0 }));
+    assert.equal(f.context.named('ignition').length, 0);
+    f.engine.update(snapshot({ step: 7, phase, count: 1, progress: 1 }));
+    for (let frame = 0; frame < 20; frame += 1) {
+      f.engine.update(snapshot({ step: 7, phase: 'ready', count: 1, progress: 1 }));
+    }
+    assert.equal(f.context.named('ignition').length, 1);
+    f.engine.destroy();
+  });
+}
+
+test('a fresh step-seven action or replay resets ignition without stacking old voices', async () => {
+  const f = fixture();
+  await f.engine.unlock();
+  for (let count = 0; count < 3; count += 1) {
+    f.engine.update(snapshot({ step: 7, phase: 'idle', count }));
+    f.engine.update(snapshot({ step: 7, phase: 'action', count, progress: .08 }));
+    assert.equal(f.context.named('ignition').length, count + 1);
+    assert.equal(f.context.named('ignition').filter((source) => !source.stops.length).length, 1);
+  }
+  f.engine.update(snapshot());
+  f.engine.update(snapshot({ step: 7, phase: 'entering' }));
+  f.engine.update(snapshot({ step: 7, phase: 'action', progress: .08 }));
+  assert.equal(f.context.named('ignition').length, 4);
+  assert.equal(f.context.named('ignition').filter((source) => !source.stops.length).length, 1);
+  assert.equal(f.context.named('music').length, 1);
+  f.engine.destroy();
+});
+
+for (const cause of ['hidden', 'modal']) {
+  for (const firedBeforePause of [true, false]) {
+    test(`${cause} pause never replays ${firedBeforePause ? 'an interrupted' : 'a suppressed'} ignition cue`, async () => {
+      const f = fixture();
+      await f.engine.unlock();
+      f.engine.update(snapshot({ step: 7, phase: 'action', progress: firedBeforePause ? .08 : .04 }));
+      const ignition = f.context.named('ignition')[0];
+      if (cause === 'hidden') f.engine.setHidden(true);
+      f.engine.update(snapshot({ step: 7, phase: 'action', progress: .12, paused: cause === 'modal' }));
+      assert.equal(f.context.named('ignition').length, firedBeforePause ? 1 : 0);
+      if (ignition) assert.equal(ignition.stops.length, 1);
+      f.runTimers();
+      await flushPromises();
+      if (cause === 'hidden') f.engine.setHidden(false);
+      f.engine.update(snapshot({ step: 7, phase: 'action', progress: .12 }));
+      await flushPromises();
+      for (const progress of [.2, .5, .8, 1]) {
+        f.engine.update(snapshot({ step: 7, phase: 'action', progress }));
+      }
+      assert.equal(f.context.named('ignition').length, firedBeforePause ? 1 : 0);
+      assert.equal(f.context.named('music').length, 1);
+      f.engine.destroy();
+    });
+  }
+}
+
+for (const destination of [0, 8]) {
+  test(`leaving step seven for step ${destination} fade-stops its ignition`, async () => {
+    const f = fixture();
+    await f.engine.unlock();
+    f.engine.update(snapshot({ step: 7, phase: 'action', progress: .08 }));
+    const ignition = f.context.named('ignition')[0];
+    f.engine.update(snapshot({ step: destination, phase: destination === 0 ? 'idle' : 'entering' }));
+    assert.equal(ignition.stops.length, 1);
+    assert.ok(ignition.stops[0] > f.context.currentTime, 'step exit must retain the short fade');
+    f.engine.destroy();
+  });
+}
+
+test('ignition never fires in another step or catches up after audio was unavailable', async () => {
+  const f = fixture();
+  f.engine.update(snapshot({ step: 7, phase: 'action', progress: .08 }));
+  assert.equal(f.factoryCalls(), 0);
+  await f.engine.unlock();
+  f.engine.update(snapshot({ step: 7, phase: 'action', progress: .2 }));
+  assert.equal(f.context.named('ignition').length, 0, 'a delayed unlock must not replay an old ignition');
+  for (const step of [0, 1, 2, 3, 4, 5, 6, 8, 9]) {
+    for (const phase of ['entering', 'idle', 'action', 'settling', 'ready']) {
+      f.engine.update(snapshot({ step, phase, progress: 1 }));
+    }
+  }
+  assert.equal(f.context.named('ignition').length, 0);
   f.engine.destroy();
 });
 

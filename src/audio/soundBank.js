@@ -1,4 +1,4 @@
-// Original procedural composition and sound design; no recordings or samples.
+// Original procedural music and sound design; no voices or recorded samples.
 // A modest source rate keeps first-gesture work small. Web Audio resamples these
 // buffers to the device rate, so they do not depend on context.sampleRate.
 const RATE = 22050;
@@ -106,6 +106,33 @@ function bubble(buffer, start, frequency, level) {
   }
 }
 
+// A rounded elastic squeeze/release, closer to a plush toy than a wet squish.
+function plushPop(buffer, start, duration, frequency, level) {
+  const out = buffer.getChannelData(0);
+  const offset = Math.round(start * RATE);
+  const frames = Math.round(duration * RATE);
+  let phase = 0;
+  for (let index = 0; index < frames && offset + index < out.length; index += 1) {
+    const time = index / RATE;
+    const bend = 1 + .32 * Math.sin(Math.PI * index / frames) - .14 * index / frames;
+    phase += TAU * frequency * bend / RATE;
+    out[offset + index] += (Math.sin(phase) + .1 * Math.sin(2 * phase))
+      * envelope(time, duration, .014, .065) * Math.exp(-time * 10) * level;
+  }
+}
+
+function roundedTone(buffer, duration, frequency, bend) {
+  const out = buffer.getChannelData(0);
+  let phase = 0;
+  const frames = Math.min(out.length, Math.round(duration * RATE));
+  for (let i = 0; i < frames; i += 1) {
+    const t = i / RATE;
+    phase += TAU * frequency * bend(i / frames) / RATE;
+    out[i] += (Math.sin(phase) + .065 * Math.sin(2 * phase))
+      * envelope(t, duration, .024, .12);
+  }
+}
+
 function finish(buffer, peakLimit, loop = false) {
   const data = channels(buffer);
   const fade = Math.min(Math.round(RATE * 0.012), Math.floor(buffer.length / 4));
@@ -188,44 +215,53 @@ function effect(context, name) {
       return finish(out, 0.48);
     }
     case 'water': {
-      const out = empty(context, 1.2);
-      texture(out, 0, 1.16, 1.1, 180, 2600, 1024, (time, duration) =>
-        envelope(time, duration, 0.09, 0.17)
-        * (0.72 + 0.16 * Math.sin(TAU * 6.7 * time) + 0.1 * Math.sin(TAU * 13.1 * time)));
-      [0.13, 0.28, 0.49, 0.65, 0.86, 1.02].forEach((start, index) =>
-        bubble(out, start, 570 + index * 71, 0.18));
-      return finish(out, 0.69);
+      const out = empty(context, 1.3);
+      texture(out, .015, 1.22, .42, 200, 1500, 1024, (time, duration) =>
+        envelope(time, duration, .12, .22)
+        * (.65 + .23 * Math.sin(TAU * 3.1 * time)));
+      [.09, .38, .68, .96].forEach((start, index) => {
+        plushPop(out, start, .2, [340, 385, 360, 410][index], .31);
+        bubble(out, start + .065, 630 + index * 33, .1);
+      });
+      bubble(out, 1.16, 760, .19);
+      return finish(out, .64);
     }
     case 'flour': {
-      const out = empty(context, 0.76);
-      texture(out, 0, 0.73, 1, 1100, 4500, 2038, (time, duration) =>
-        envelope(time, duration, 0.065, 0.16)
-        * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(TAU * 29 * time)) ** 3));
-      return finish(out, 0.54);
+      const out = empty(context, 1);
+      texture(out, 0, .97, .85, 600, 2600, 2038, (time, duration) =>
+        envelope(time, duration, .12, .25)
+        * (.25 + .75 * (.5 + .5 * Math.sin(TAU * 8 * time)) ** 2));
+      return finish(out, .4);
     }
     case 'knead': {
       const out = empty(context, 0.34);
-      mallet(out, 0.012, 185, 0.28, 0.6, 0, true);
-      mallet(out, 0.12, 247, 0.18, 0.13, 0, true);
-      texture(out, 0, 0.22, 0.38, 100, 1200, 3011,
-        (time, duration) => envelope(time, duration, 0.018, 0.13));
+      plushPop(out, .012, .22, 310, .62);
+      plushPop(out, .155, .175, 445, .28);
+      texture(out, 0, .22, .12, 180, 1000, 3011,
+        (time, duration) => envelope(time, duration, .025, .13));
       return finish(out, 0.64);
+    }
+    case 'ignition': {
+      const out = empty(context, .8);
+      [0, .105, .21].forEach((start, index) => {
+        texture(out, start, .048, .42, 850, 4200, 3501 + index,
+          (time, duration) => envelope(time, duration, .003, .033) * Math.exp(-time * 65));
+        mallet(out, start + .002, 1020, .045, .035, 0, true);
+      });
+      texture(out, .25, .53, .7, 160, 1850, 3511,
+        (time, duration) => envelope(time, duration, .075, .26));
+      return finish(out, .58);
     }
     case 'fold': {
       const out = empty(context, 0.33);
-      texture(out, 0, 0.3, 0.8, 450, 2800, 4099, (time, duration) =>
-        envelope(time, duration, 0.04, 0.1)
-        * (0.35 + 0.65 * Math.sin(Math.PI * time / duration) ** 2));
-      mallet(out, 0.16, 330, 0.14, 0.11, 0, true);
+      // One rounded chirp per fold: the existing three actions make “chirp x3”.
+      roundedTone(out, .3, 880, t => .85 + .48 * Math.sin(Math.PI * t) - .2 * t);
       return finish(out, 0.5);
     }
     case 'place': {
       const out = empty(context, 0.3);
-      mallet(out, 0.006, 220, 0.27, 0.75, 0, true);
-      mallet(out, 0.007, 587, 0.16, 0.13, 0, true);
-      texture(out, 0, 0.08, 0.25, 400, 2300, 5021,
-        (time, duration) => envelope(time, duration, 0.004, 0.055));
-      return finish(out, 0.59);
+      roundedTone(out, .28, 550, t => 1 + .11 * Math.exp(-t * 8));
+      return finish(out, .52);
     }
     case 'steam': {
       const out = empty(context, 3);
@@ -245,18 +281,33 @@ function effect(context, name) {
       return finish(out, 0.59);
     }
     case 'celebrate': {
-      const out = empty(context, 1.8, 2);
-      [523.25, 659.25, 783.99, 1046.5].forEach((note, index) =>
-        mallet(out, 0.04 + index * 0.115, note, 1.25, 0.25, index % 2 ? 0.22 : -0.22));
-      const clap = empty(context, 1.8);
-      [0.12, 0.4, 0.68].forEach((start, index) => {
-        texture(clap, start, 0.12, 0.34, 700, 3600, 7001 + index, (time, duration) =>
-          envelope(time, duration, 0.002, 0.07)
-          * (Math.exp(-time * 62) + 0.55 * Math.exp(-Math.abs(time - 0.017) * 180)));
-      });
-      const claps = clap.getChannelData(0);
+      const out = empty(context, 4.2, 2);
+      // Several offset pairs of hands create sustained applause. Synthesis
+      // guarantees no speech, cheering voices or incidental crowd vocals.
+      for (let person = 0; person < 4; person += 1) {
+        const hands = empty(context, 4.2);
+        const interval = [.34, .39, .43, .37][person];
+        for (let clap = 0; clap < 10; clap += 1) {
+          const start = .10 + person * .071 + clap * interval;
+          if (start > 3.6) break;
+          const level = (.54 + .07 * Math.sin(clap * 2 + person)) * Math.min(1, (4 - start) / .65);
+          texture(hands, start, .16, level, 650, 4100, 7001 + person * 101 + clap,
+            (time, duration) => envelope(time, duration, .0025, .065)
+              * (Math.exp(-time * 38) + .5 * Math.exp(-Math.abs(time - .012) * 190)
+                + .28 * Math.exp(-Math.abs(time - .023) * 180)));
+        }
+        const data = hands.getChannelData(0);
+        for (let c = 0; c < 2; c += 1) {
+          const target = out.getChannelData(c);
+          const gain = person % 2 === c ? .85 : .55;
+          for (let i = 0; i < target.length; i += 1) target[i] += data[i] * gain;
+        }
+      }
+      const puffs = empty(context, 4.2);
+      [.05, 1.95].forEach((start, i) => texture(puffs, start, 2.1, .2, 280, 1800, 8001 + i,
+        (time, duration) => envelope(time, duration, .42, .7) * (.75 + .15 * Math.sin(TAU * time))));
       for (const channel of channels(out)) {
-        for (let index = 0; index < channel.length; index += 1) channel[index] += claps[index];
+        for (let i = 0; i < channel.length; i += 1) channel[i] += puffs.getChannelData(0)[i];
       }
       return finish(out, 0.72);
     }
@@ -271,7 +322,7 @@ export function createSoundBank(context) {
   }
   if (banks.has(context)) return banks.get(context);
   const bank = { music: music(context) };
-  for (const name of ['click', 'water', 'flour', 'knead', 'fold', 'place', 'steam', 'tick', 'tickFinal', 'celebrate']) {
+  for (const name of ['click', 'water', 'flour', 'knead', 'ignition', 'fold', 'place', 'steam', 'tick', 'tickFinal', 'celebrate']) {
     bank[name] = effect(context, name);
   }
   Object.freeze(bank);

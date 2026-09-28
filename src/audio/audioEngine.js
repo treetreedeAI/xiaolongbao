@@ -2,7 +2,7 @@ import { createSoundBank } from './soundBank.js';
 
 const ACTION_SOUNDS = { 1: 'flour', 2: 'water', 3: 'knead', 4: 'place', 5: 'fold', 6: 'place' };
 const LEVELS = { click: .16, flour: .55, water: .55, knead: .48, fold: .52,
-  place: .40, tick: .25, tickFinal: .32, celebrate: .46 };
+  place: .40, ignition: .42, tick: .25, tickFinal: .32, celebrate: .46 };
 const GROUPS = { click: 'ui', tick: 'tick', tickFinal: 'tick', celebrate: 'celebration' };
 
 /** An audio-only observer: it never advances or writes to the game clock. */
@@ -31,6 +31,7 @@ export function createAudioEngine({
   let previous;
   let state = { step: 0, phase: 'idle', count: 0, countdown: 5, progress: 0, paused: false };
   let lastClick = -Infinity;
+  let ignitionPlayed = false;
   const voices = new Map();
   const targets = new WeakMap();
 
@@ -197,6 +198,7 @@ export function createAudioEngine({
     state = { step: snapshot.step, phase: snapshot.phase, count: snapshot.count,
       countdown: snapshot.countdown, progress: snapshot.progress, paused: snapshot.paused };
     previous = state;
+    if (state.step !== 7 || state.phase === 'entering' || state.phase === 'idle') ignitionPlayed = false;
     if (before && before.step !== state.step) {
       for (const [group, voice] of voices) {
         if (group === 'ui') continue;
@@ -208,10 +210,17 @@ export function createAudioEngine({
     // A modal closing gets one resume attempt. An OS interruption waits for
     // visibility restoration or the next gesture, never a retry on every frame.
     if (requested && before?.paused && !paused()) resume();
+    const ignite = state.step === 7 && !ignitionPlayed && (
+      (state.phase === 'action' && state.progress >= .08)
+      || state.phase === 'settling' || state.phase === 'ready');
+    // Mark even a paused edge, so returning cannot replay a stale ignition.
+    if (ignite) ignitionPlayed = true;
     if (paused()) return;
     if (state.phase === 'action' && (before?.phase !== 'action' || before?.step !== state.step || before?.count !== state.count)) {
       play(ACTION_SOUNDS[state.step]);
     }
+    // Observe the existing flame fade-in; never add a timer or alter its clock.
+    if (ignite) play('ignition');
     if (state.step === 8 && state.phase === 'countdown'
       && (before?.step !== 8 || before?.phase !== 'countdown' || before?.countdown !== state.countdown)) {
       play(state.countdown === 1 ? 'tickFinal' : 'tick');

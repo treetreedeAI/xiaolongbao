@@ -16,20 +16,30 @@ It does not change game handlers, clocks, DOM, artwork, animation or PWA setting
 | --- | --- | --- |
 | music | 20 s, looping | Original instrumental pentatonic mallet/kalimba-style melody, rounded wooden bass, no vocals |
 | click | 0.11 s | Soft wooden UI tap |
-| water | 1.2 s | Filtered flowing texture with small surface bubbles |
-| flour | 0.76 s | Fine dry sprinkle |
-| knead | 0.34 s | Rounded bouncy contact, no wet texture |
-| fold | 0.33 s | Gentle dry folding/rustle |
-| place | 0.30 s | Soft ingredient/bun placement |
+| water | 1.3 s | Slow rounded gurgles, softer flow and a playful final drop |
+| flour | 1 s | Light, soft powder with slower sprinkle pulses |
+| knead | 0.34 s | Two soft, elastic plush pops, no wet texture |
+| ignition | 0.8 s | Three soft stove-ignition clicks followed by a short warm whoosh |
+| fold | 0.33 s | One cute rounded chirp per fold; the three actions form three chirps |
+| place | 0.30 s | Soft “doo” tone shared by filling and bun placement |
 | steam | 3 s, looping | Soft filtered hiss with slow breathing variation |
 | tick / tickFinal | 0.16 / 0.28 s | Gentle countdown; the final note is slightly stronger |
-| celebrate | 1.8 s | Rising musical flourish and three quiet synthesized claps |
+| celebrate | 4.2 s | Sustained layered applause and two soft steam puffs; no human voices |
 
-These are original procedural sounds, not downloaded music or recorded Foley.
-No external licenses, CDN, audio downloads, voice tracks or dependencies are used.
-Audio code is part of the normal Vite JavaScript bundle and therefore included in
-the existing generated offline precache. No separate MP3/WAV assets or cache
-configuration changes are needed, including at `/xiaolongbao/`.
+Music and effects are original procedural sounds. The proposed recorded Wow
+was removed before publication following the user's revised request. The finale
+uses synthesized handclaps rather than a crowd recording so there are no incidental
+voices. Everything is part of the normal Vite JavaScript bundle, covered by the
+existing generated offline precache. There is no runtime CDN fetch, speech
+synthesis, audio-file request, codec decode, new dependency or PWA configuration
+change, including at `/xiaolongbao/`.
+
+The revision changes only sound design for flour, water, kneading, filling/final
+placement, folding, ignition and the finale. Golden PCM hashes verify music,
+click, steam and both countdown cues remain exactly identical to the deployed
+release; knead and ignition remain identical to the first approved revision.
+Mix-bus gains are unchanged. Slower flour/water sounds fit within the existing
+1.35-second action plus settling window; no animation or game clock was changed.
 
 ## Mixing and lifecycle
 
@@ -41,6 +51,9 @@ configuration changes are needed, including at `/xiaolongbao/`.
   fades. UI taps are throttled to at most one per 90 ms.
 - Steam begins at the existing step-seven steam cue (81% of the action), fades
   out when the player leaves that step, and stops during pause/backgrounding.
+- Ignition plays once when the existing flame begins fading in (8% of step seven).
+  Reduced-motion/skipped frames have a one-shot completion-edge fallback. Leaving
+  the step stops it; paused or unavailable cues do not catch up and stack later.
 - Countdown reads the existing five displayed digits, never its own game timer.
 - Hidden pages and existing dialogs fade/pause audio. Visibility restoration,
   modal close and fresh gestures can resume suspended/interrupted contexts.
@@ -49,7 +62,7 @@ configuration changes are needed, including at `/xiaolongbao/`.
 
 ## Verification
 
-- `npm test`: 46 passing tests (20 existing, 26 audio-specific).
+- `npm test`: 59 passing tests (20 game-state tests, 39 audio-specific).
 - Production build with `PAGES_BASE_PATH=/xiaolongbao/`: passing.
 - All 45 existing Chromium end-to-end tests: passing, including offline gameplay.
 - Existing WebKit tests with iPhone and iPad profiles: 8 passing cases covering

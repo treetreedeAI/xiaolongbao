@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createSoundBank } from '../../src/audio/soundBank.js';
 
 function context(sampleRate = 48000) {
@@ -18,8 +19,21 @@ function context(sampleRate = 48000) {
 
 const firstContext = context();
 const bank = createSoundBank(firstContext);
-const durations = { music: 20, click: 0.11, water: 1.2, flour: 0.76, knead: 0.34,
-  fold: 0.33, place: 0.3, steam: 3, tick: 0.16, tickFinal: 0.28, celebrate: 1.8 };
+const durations = { music: 20, click: 0.11, water: 1.3, flour: 1, knead: 0.34,
+  fold: 0.33, place: 0.3, ignition: 0.8, steam: 3, tick: 0.16, tickFinal: 0.28, celebrate: 4.2 };
+
+// Music/click/steam/ticks retain their original published PCM. Knead and
+// ignition retain the accepted first-pass revision. The second-pass request
+// only changes flour, water, place, fold and the voice-free finale.
+const preservedDigests = {
+  music: '0786240a1022e0154f88bfbc98af2da794c8d5f9c10a17fde3779dd84eb3af89',
+  click: 'cdeb179fd445a168ea81eaf886b8323de88095d2c482d67d4920f94d58186e2d',
+  knead: '7566c411245d20046de0aef1368502043b813b22eeb4bd490aced9dec61f87b2',
+  ignition: 'de4291346f4bfb66bd532fef99065a610df839b8c166b5268383ee4a3fdb01cc',
+  steam: '1e08f9009d1fba2633799c31135a7924af19efe4f213e93e2ed2aa317fe36c4c',
+  tick: '33a2ccf12eb4bd4e22316233ef6acdf833b1da452b22471a1f6d44eb87ee0db0',
+  tickFinal: '5cb7faa24e9f649da4ca984ed08f3e5884fcb22f310bc122038138fe46159c21',
+};
 
 function digest(buffer) {
   const hash = createHash('sha256');
@@ -29,6 +43,29 @@ function digest(buffer) {
   }
   return hash.digest('hex');
 }
+
+test('background music and every unrequested sound remain byte-exactly unchanged', () => {
+  for (const [name, expected] of Object.entries(preservedDigests)) {
+    assert.equal(digest(bank[name]), expected, `${name}: changed outside the requested revision`);
+  }
+});
+
+test('the voice-free finale has no recorded voice, sampled celebration or speech dependency', () => {
+  const source = readFileSync(new URL('../../src/audio/soundBank.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /recordedCelebration|mixRecordedCelebration|WOW_SoundSmith|speechSynthesis/);
+  assert.doesNotMatch(source, /^\s*import\s/m, 'the procedural bank must not import recorded media');
+  assert.equal(bank.celebrate.duration, 4.2);
+  let lateEnergy = 0;
+  let sampleCount = 0;
+  for (let channel = 0; channel < bank.celebrate.numberOfChannels; channel += 1) {
+    const data = bank.celebrate.getChannelData(channel);
+    for (let index = Math.round(3 * bank.celebrate.sampleRate); index < data.length; index += 1) {
+      lateEnergy += data[index] ** 2;
+      sampleCount += 1;
+    }
+  }
+  assert(Math.sqrt(lateEnergy / sampleCount) > 0.005, 'the longer finale must contain sound, not a padded silent tail');
+});
 
 test('bank exposes every named gesture at usable durations and a compact source rate', () => {
   assert.deepEqual(Object.keys(bank).sort(), Object.keys(durations).sort());
